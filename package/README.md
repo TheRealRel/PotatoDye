@@ -15,7 +15,7 @@
 
 The color tints the cape's own texture, so light capes (Linen) take it best and dark, furry ones (Wolf, Lox) only shift a little. Capes only for now.
 
-Part of the **PotatoServer** pack for the Potato Server. 🛠️ Source and bug reports: [github.com/TheRealRel/PotatoTweaks](https://github.com/TheRealRel/PotatoTweaks)
+Part of the **PotatoServer** pack for the Potato Server. 🛠️ Source and bug reports: [github.com/TheRealRel/PotatoDye](https://github.com/TheRealRel/PotatoDye)
 
 ## Settings
 
