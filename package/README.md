@@ -1,6 +1,11 @@
 # 🎨 Potato Dye
 
-**Dye your cape at the barber.** Sit in the barber's chair and a **Cape color** panel opens beside the hair settings, with **red, green and blue sliders**. Your cape changes color as you move them.
+**Dye your cape at the barber.** Sit in the barber's chair and a **Cape color** panel opens beside the hair settings, with three sliders. Your cape changes color as you move them.
+
+- **Hue** picks the color from a rainbow strip.
+- **Saturation** is how strong the dye is: at 0 the cape keeps its own colors.
+- **Brightness** makes it lighter or darker.
+
 
 - **Apply** keeps the color, **Cancel** puts it back, and **No dye** returns the cape to its own colors.
 - **Free**, like changing a hair style.

@@ -2,7 +2,7 @@
     "name": "PotatoDye",
     "version_number": "1.0.0",
     "website_url": "https://github.com/TheRealRel/PotatoTweaks",
-    "description": "Dye your cape at the barber: red, green and blue sliders with a live preview. Free, saved with your character, works with outfit mods, and other players with the mod see your colors.",
+    "description": "Dye your cape at the barber: hue, saturation and brightness sliders with a live preview. Free, saved with your character, works with outfit mods, and other players with the mod see your colors.",
     "dependencies": [
         "denikson-BepInExPack_Valheim-5.4.2351"
     ]

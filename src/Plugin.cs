@@ -200,8 +200,10 @@ namespace PotatoDye
         private static TMP_Text note;
         private static Image swatch;
         private static bool syncing;
-        private static readonly string[] Names = { "Red", "Green", "Blue" };
-        private static readonly Color[] Tints = { new Color(1f, 0.45f, 0.45f), new Color(0.5f, 1f, 0.5f), new Color(0.55f, 0.7f, 1f) };
+        // Hue (the color), saturation (how strong the dye is; 0 = the cape's own colors) and brightness.
+        private static readonly string[] Names = { "Hue", "Saturation", "Brightness" };
+        private static readonly Texture2D[] Strips = new Texture2D[3];
+        private const int StripWidth = 64;
 
         private static readonly AccessTools.FieldRef<bool> WasHidden = AccessTools.StaticFieldRefAccess<bool>(AccessTools.Field(typeof(PlayerCustomizaton), "m_barberWasHidden"));
 
@@ -263,10 +265,11 @@ namespace PotatoDye
             int hash = Plugin.ShownCape(player);
             var prefab = Plugin.CapePrefab(hash);
             var color = Plugin.SavedColor(player, hash) ?? Color.white;
+            Color.RGBToHSV(color, out float hue, out float saturation, out float brightness);
             syncing = true;
-            Sliders[0].value = color.r;
-            Sliders[1].value = color.g;
-            Sliders[2].value = color.b;
+            Sliders[0].value = hue;
+            Sliders[1].value = saturation;
+            Sliders[2].value = brightness;
             syncing = false;
             bool wearing = prefab;
             foreach (var slider in Sliders) slider.interactable = wearing;
@@ -283,19 +286,35 @@ namespace PotatoDye
             Refresh();
         }
 
-        private static Color Current() => new Color(Sliders[0].value, Sliders[1].value, Sliders[2].value, 1f);
+        private static Color Current() => Color.HSVToRGB(Sliders[0].value, Sliders[1].value, Sliders[2].value);
 
         private static void Refresh()
         {
-            var color = Current();
-            for (int i = 0; i < 3; i++) Values[i].text = Mathf.RoundToInt(Sliders[i].value * 255f).ToString(CultureInfo.InvariantCulture);
-            swatch.color = color;
+            float hue = Sliders[0].value, saturation = Sliders[1].value, brightness = Sliders[2].value;
+            Values[0].text = Mathf.RoundToInt(hue * 360f).ToString(CultureInfo.InvariantCulture) + "\u00B0";
+            Values[1].text = Mathf.RoundToInt(saturation * 100f).ToString(CultureInfo.InvariantCulture) + "%";
+            Values[2].text = Mathf.RoundToInt(brightness * 100f).ToString(CultureInfo.InvariantCulture) + "%";
+            swatch.color = Current();
+            // Each slider's strip shows what moving it does: every hue, then from no dye to full strength, then dark to light.
+            Paint(0, x => Color.HSVToRGB(x, 1f, 1f));
+            Paint(1, x => Color.HSVToRGB(hue, x, brightness));
+            Paint(2, x => Color.HSVToRGB(hue, saturation, x));
         }
 
+        private static void Paint(int index, Func<float, Color> at)
+        {
+            var strip = Strips[index];
+            if (!strip) return;
+            for (int x = 0; x < StripWidth; x++) strip.SetPixel(x, 0, at(x / (StripWidth - 1f)));
+            strip.Apply(false);
+        }
+
+        // No dye: the cape's own colors (no saturation, full brightness); the hue stays where it was.
         private static void Reset()
         {
             syncing = true;
-            foreach (var slider in Sliders) slider.value = 1f;
+            Sliders[1].value = 0f;
+            Sliders[2].value = 1f;
             syncing = false;
             Changed();
         }
@@ -313,7 +332,7 @@ namespace PotatoDye
                 return;
             }
 
-            const float width = 300f, height = 250f, pad = 16f;
+            const float width = 340f, height = 250f, pad = 16f, labelWidth = 92f, valueWidth = 46f;
             // Beside the window's background (its largest picture), unless that fills the screen.
             var source = root.GetComponent<Image>() ?? root.GetComponentsInChildren<Image>(true)
                 .Where(image => image.sprite && image.transform != root && !image.GetComponentInParent<Selectable>())
@@ -357,11 +376,10 @@ namespace PotatoDye
 
             for (int i = 0; i < 3; i++)
             {
-                var label = Text(textSource, Names[i], pad, y, 60f, 26f);
+                var label = Text(textSource, Names[i], pad, y, labelWidth, 26f);
                 label.text = Names[i];
                 label.alignment = TextAlignmentOptions.Left;
-                label.color = Tints[i];
-                label.fontSize = Mathf.Max(12f, textSource.fontSize * 0.85f);
+                label.fontSize = Mathf.Max(12f, textSource.fontSize * 0.8f);
 
                 var copy = UnityEngine.Object.Instantiate(sliderSource.gameObject, rect, false);
                 copy.name = "PotatoDye_" + Names[i];
@@ -372,12 +390,11 @@ namespace PotatoDye
                 slider.maxValue = 1f;
                 slider.wholeNumbers = false;
                 slider.onValueChanged.AddListener(_ => Changed());
-                Place((RectTransform)copy.transform, pad + 64f, y + 3f, width - pad * 2f - 64f - 44f, 20f);
-                foreach (var image in copy.GetComponentsInChildren<Image>(true))
-                    if (image.transform != copy.transform && !image.GetComponent<Selectable>()) image.color *= Tints[i];
+                Place((RectTransform)copy.transform, pad + labelWidth + 4f, y + 3f, width - pad * 2f - labelWidth - 4f - valueWidth - 4f, 20f);
+                Strip(slider, i);
                 Sliders[i] = slider;
 
-                var value = Text(textSource, Names[i] + "Value", width - pad - 40f, y, 40f, 26f);
+                var value = Text(textSource, Names[i] + "Value", width - pad - valueWidth, y, valueWidth, 26f);
                 value.alignment = TextAlignmentOptions.Right;
                 value.fontSize = Mathf.Max(12f, textSource.fontSize * 0.8f);
                 Values[i] = value;
@@ -399,6 +416,26 @@ namespace PotatoDye
             if (buttonText) buttonText.text = "No dye";
             Place((RectTransform)reset.transform, width - pad - 140f, y, 140f, 40f);
             panel.SetActive(false);
+        }
+
+        // The slider's own track and fill give way to a strip of the colors it reaches; the handle stays.
+        private static void Strip(Slider slider, int index)
+        {
+            var handle = slider.handleRect ? slider.handleRect : null;
+            foreach (var part in slider.GetComponentsInChildren<Image>(true))
+                if (!handle || !part.transform.IsChildOf(handle)) part.enabled = false;
+            var strip = new Texture2D(StripWidth, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            Strips[index] = strip;
+            var holder = new GameObject("PotatoDye_Strip", typeof(RectTransform));
+            var rect = (RectTransform)holder.transform;
+            rect.SetParent(slider.transform, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = new Vector2(0f, 0.25f);
+            rect.anchorMax = new Vector2(1f, 0.75f);
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            var image = holder.AddComponent<Image>();
+            image.sprite = Sprite.Create(strip, new Rect(0f, 0f, StripWidth, 1f), new Vector2(0.5f, 0.5f));
+            image.raycastTarget = true;
         }
 
         // Keep the whole panel on screen.
