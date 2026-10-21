@@ -15,15 +15,17 @@ using UnityEngine.UI;
 namespace PotatoDye
 {
     // Sit in the barber's chair and a Cape color panel sits beside the hair settings: red, green and blue sliders that
-    // tint the cape you're wearing as you move them. Apply keeps the color on that cape (it stays with the cape through
-    // chests, trades and death), Cancel puts it back. It's free, like changing a hair style. The color multiplies the
-    // cape's own texture, so light capes take it best. Other players with Potato Dye see your colors.
+    // tint the cape you see on your character as you move them. Apply keeps the color, Cancel puts it back. It's free,
+    // like changing a hair style. Colors belong to the character, one per kind of cape, and follow what is drawn: with
+    // an outfit mod showing another cape, that cape is the one dyed. The color multiplies the cape's own texture, so light
+    // capes take it best. Other players with Potato Dye see your colors.
     [BepInPlugin(Id, "Potato Dye", Version)]
     public class Plugin : BaseUnityPlugin
     {
         public const string Id = "potato.dye", Version = "1.0.0";
-        internal const string ItemKey = "PotatoDye.Color";
-        internal static readonly int ZdoKey = "PotatoDye.Cape".GetStableHashCode();
+        internal const string SaveKey = "PotatoDye.Capes";
+        // Shared with everyone: the color, and the cape it is for (a color only tints that cape).
+        internal static readonly int ZdoKey = "PotatoDye.Cape".GetStableHashCode(), ZdoFor = "PotatoDye.CapeFor".GetStableHashCode();
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> ShowColors, BarberPanel;
@@ -57,25 +59,42 @@ namespace PotatoDye
 
         internal static int Packed(Color? color) => color.HasValue && !IsPlain(color.Value) ? (1 << 24) | ToRgb(color.Value) : 0;
 
-        internal static Color? ColorOf(ItemDrop.ItemData item) =>
-            item?.m_customData != null && item.m_customData.TryGetValue(ItemKey, out var text) && TryParse(text, out var color) ? color : (Color?)null;
-
-        internal static void SetColor(ItemDrop.ItemData item, Color? color)
+        // Saved with the character as "CapeLinen=FF8000;CapeWolf=202060".
+        internal static Dictionary<string, Color> Saved(Player player)
         {
-            if (item == null) return;
-            if (!color.HasValue || IsPlain(color.Value)) item.m_customData?.Remove(ItemKey);
-            else
+            var colors = new Dictionary<string, Color>();
+            if (player == null || !player.m_customData.TryGetValue(SaveKey, out var text)) return colors;
+            foreach (var entry in text.Split(';'))
             {
-                if (item.m_customData == null) item.m_customData = new Dictionary<string, string>();
-                item.m_customData[ItemKey] = ToHex(color.Value);
+                int split = entry.IndexOf('=');
+                if (split > 0 && TryParse(entry.Substring(split + 1), out var color)) colors[entry.Substring(0, split)] = color;
             }
+            return colors;
+        }
+
+        internal static void Save(Player player, string cape, Color? color)
+        {
+            if (player == null || string.IsNullOrEmpty(cape)) return;
+            var colors = Saved(player);
+            if (!color.HasValue || IsPlain(color.Value)) colors.Remove(cape);
+            else colors[cape] = color.Value;
+            if (colors.Count == 0) player.m_customData.Remove(SaveKey);
+            else player.m_customData[SaveKey] = string.Join(";", colors.Select(pair => pair.Key + "=" + ToHex(pair.Value)));
         }
 
         // ---------------------------------------------------------------- your cape, shared with everyone
-        private static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> Shoulder = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_shoulderItem");
         private static readonly AccessTools.FieldRef<Character, ZNetView> CharacterView = AccessTools.FieldRefAccess<Character, ZNetView>("m_nview");
 
-        internal static ItemDrop.ItemData WornCape(Player player) => player ? Shoulder(player) : null;
+        // The cape drawn on the player (an outfit mod's choice included), as its hash, or 0.
+        internal static int ShownCape(Player player) => player ? CharacterView(player)?.GetZDO()?.GetInt(ZDOVars.s_shoulderItem) ?? 0 : 0;
+
+        internal static GameObject CapePrefab(int hash) => hash != 0 && ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(hash) : null;
+
+        internal static Color? SavedColor(Player player, int hash)
+        {
+            var prefab = CapePrefab(hash);
+            return prefab && Saved(player).TryGetValue(prefab.name, out var color) ? color : (Color?)null;
+        }
 
         // While the barber sliders move, the cape shows the slider color instead of its own.
         internal static Color? Preview;
@@ -94,13 +113,15 @@ namespace PotatoDye
                 next = Time.time + 0.25f;
                 var zdo = CharacterView(__instance)?.GetZDO();
                 if (zdo == null || !zdo.IsOwner()) return;
-                int want = Packed(Previewing ? Preview : ColorOf(WornCape(__instance)));
+                int cape = zdo.GetInt(ZDOVars.s_shoulderItem);
+                int want = cape == 0 ? 0 : Packed(Previewing ? Preview : SavedColor(__instance, cape));
                 if (zdo.GetInt(ZdoKey) != want) zdo.Set(ZdoKey, want);
+                if (zdo.GetInt(ZdoFor) != cape) zdo.Set(ZdoFor, cape);
             }
         }
 
         // ---------------------------------------------------------------- drawing
-        // Every worn cape is tinted with its wearer's color through the game's own material settings (the way cape
+        // Every drawn cape is tinted with its wearer's color for it through the game's own material settings (the way cape
         // styles are set), multiplied with the cape's own color. Set again now and then, since the game's snow and wet
         // effects can refresh the same settings.
         [HarmonyPatch(typeof(VisEquipment), "UpdateVisuals")]
@@ -117,13 +138,15 @@ namespace PotatoDye
             private static readonly ConditionalWeakTable<VisEquipment, State> States = new ConditionalWeakTable<VisEquipment, State>();
             private static readonly AccessTools.FieldRef<VisEquipment, ZNetView> View = AccessTools.FieldRefAccess<VisEquipment, ZNetView>("m_nview");
             private static readonly AccessTools.FieldRef<VisEquipment, List<GameObject>> Instances = AccessTools.FieldRefAccess<VisEquipment, List<GameObject>>("m_shoulderItemInstances");
+            private static readonly AccessTools.FieldRef<VisEquipment, int> Drawn = AccessTools.FieldRefAccess<VisEquipment, int>("m_currentShoulderItemHash");
             private static readonly int ColorId = Shader.PropertyToID("_Color");
 
             private static void Postfix(VisEquipment __instance)
             {
                 if (!__instance.m_isPlayer || __instance.m_isArmorStand || MaterialMan.instance == null) return;
                 var zdo = View(__instance)?.GetZDO();
-                int packed = Plugin.ShowColors.Value && zdo != null ? zdo.GetInt(ZdoKey) : 0;
+                // Only for the cape the color was chosen for, so a cape just put on never shows the last one's color.
+                int packed = Plugin.ShowColors.Value && zdo != null && zdo.GetInt(ZdoFor) == Drawn(__instance) ? zdo.GetInt(ZdoKey) : 0;
                 var instances = Instances(__instance);
                 var state = States.GetOrCreateValue(__instance);
                 if (state.Instances == instances && state.Packed == packed && (packed == 0 || Time.time < state.Next)) return;
@@ -161,18 +184,6 @@ namespace PotatoDye
                     MaterialMan.instance.SetValue(target, ColorId, own * dye, true);
                     if (!state.Tinted.Contains(target)) state.Tinted.Add(target);
                 }
-            }
-        }
-
-        // ---------------------------------------------------------------- the color in the tooltip
-        [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetTooltip),
-            new[] { typeof(ItemDrop.ItemData), typeof(int), typeof(bool), typeof(float), typeof(int), typeof(bool) })]
-        internal static class Tooltip
-        {
-            private static void Postfix(ItemDrop.ItemData item, ref string __result)
-            {
-                var color = ColorOf(item);
-                if (color.HasValue) __result += $"\n<color=#{ToHex(color.Value)}>■■■</color> Dyed #{ToHex(color.Value)}";
             }
         }
     }
@@ -226,8 +237,9 @@ namespace PotatoDye
             private static void Prefix()
             {
                 if (!Plugin.Previewing) return;
-                var cape = Plugin.WornCape(Player.m_localPlayer);
-                if (cape != null) Plugin.SetColor(cape, Plugin.Preview);
+                var player = Player.m_localPlayer;
+                var prefab = Plugin.CapePrefab(Plugin.ShownCape(player));
+                if (prefab) Plugin.Save(player, prefab.name, Plugin.Preview);
                 Stop();
             }
         }
@@ -244,26 +256,28 @@ namespace PotatoDye
             Plugin.Preview = null;
         }
 
-        // Sliders from the cape you're wearing (white = its own colors).
+        // Sliders from the cape you see (white = its own colors).
         private static void Load()
         {
-            var cape = Plugin.WornCape(Player.m_localPlayer);
-            var color = Plugin.ColorOf(cape) ?? Color.white;
+            var player = Player.m_localPlayer;
+            int hash = Plugin.ShownCape(player);
+            var prefab = Plugin.CapePrefab(hash);
+            var color = Plugin.SavedColor(player, hash) ?? Color.white;
             syncing = true;
             Sliders[0].value = color.r;
             Sliders[1].value = color.g;
             Sliders[2].value = color.b;
             syncing = false;
-            bool wearing = cape != null;
+            bool wearing = prefab;
             foreach (var slider in Sliders) slider.interactable = wearing;
-            note.text = wearing ? Localization.instance.Localize(cape.m_shared.m_name) : "Wear a cape to dye it";
+            note.text = wearing ? Localization.instance.Localize(prefab.GetComponent<ItemDrop>()?.m_itemData.m_shared.m_name ?? prefab.name) : "Wear a cape to dye it";
             Stop();
             Refresh();
         }
 
         private static void Changed()
         {
-            if (syncing || Plugin.WornCape(Player.m_localPlayer) == null) return;
+            if (syncing || Plugin.ShownCape(Player.m_localPlayer) == 0) return;
             Plugin.Preview = Current();
             Plugin.Previewing = true;
             Refresh();

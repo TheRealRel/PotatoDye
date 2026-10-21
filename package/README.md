@@ -4,7 +4,8 @@
 
 - **Apply** keeps the color, **Cancel** puts it back, and **No dye** returns the cape to its own colors.
 - **Free**, like changing a hair style.
-- The color is **saved on that cape**: it stays through chests, trades and death, and a different cape keeps its own color. A dyed cape's tooltip shows its color.
+- Colors are **saved with your character**, one per kind of cape: dye your Linen cape red and your Wolf cape blue, and each shows its own color whenever you wear it.
+- It dyes the **cape you see**. With **Vanity Outfit** showing a different cape, that's the one you dye, even if you aren't wearing one underneath.
 - **Other players with Potato Dye see your colors.** Players without it see the cape's normal colors; nothing breaks either way.
 
 The color tints the cape's own texture, so light capes (Linen) take it best and dark, furry ones (Wolf, Lox) only shift a little. Capes only for now.
