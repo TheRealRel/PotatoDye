@@ -17,6 +17,8 @@ The color tints the cape's own texture, so light capes (Linen) take it best and 
 
 Part of the **PotatoServer** pack for the Potato Server. 🛠️ Source and bug reports: [github.com/TheRealRel/PotatoDye](https://github.com/TheRealRel/PotatoDye)
 
+💬 Questions: Discord [relanebeis](https://discord.com/users/373574370267889674)
+
 ## Settings
 
 In `BepInEx/config/potato.dye.cfg`, or in game with Configuration Manager. Both are personal.
@@ -29,3 +31,7 @@ In `BepInEx/config/potato.dye.cfg`, or in game with Configuration Manager. Both 
 ## Requirements
 
 - [BepInExPack Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
+
+## License
+
+The code is under the MIT License: use it, change it and share it freely. The icon is © TheRealRel under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/): free to share and adapt with credit, but not for commercial use. See `LICENSE`.
