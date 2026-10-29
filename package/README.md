@@ -21,6 +21,8 @@ Dyeing is free, like changing a hair style. Colors are saved with your character
 
 Each press moves it about 1 cm or tilts it 3 degrees, and holding a key repeats. Every kind of item keeps its own place, saved with your character, so all your Iron Swords sit where you put yours. The quiver's place goes into Better Archery's own quiver settings.
 
+![Moving an axe on your back with the keys](https://raw.githubusercontent.com/TheRealRel/PotatoDye/main/docs/images/holster.gif)
+
 **Other players with Potato Dye see your colors and places.** Players without it see the normal look, and nothing breaks either way.
 
 Part of the **PotatoServer** pack for the Potato Server.
