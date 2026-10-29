@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0
+- Move what's on your back: hold Right Ctrl and use the arrow keys and Page Up / Page Down to place the weapons, tools, shield and Better Archery quiver on your back, Right Shift to tilt, Home to pick the next item and End to put it back. Places are saved per kind of item with your character, and other players with Potato Dye see them. New settings: Holster places and Holster adjust key.
+- The page follows the other Potato mods' style.
+
 ## 1.0.1
 - The mod page links the author's Discord for questions (bug reports stay on GitHub) and has a License section: the code is MIT, free to use, change and share; the icon is CC BY-NC 4.0.
 

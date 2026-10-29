@@ -22,7 +22,7 @@ namespace PotatoDye
     [BepInPlugin(Id, "Potato Dye", Version)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string Id = "potato.dye", Version = "1.0.1";
+        public const string Id = "potato.dye", Version = "1.1.0";
         internal const string SaveKey = "PotatoDye.Capes";
         // Shared with everyone: the color, and the cape it is for (a color only tints that cape).
         internal static readonly int ZdoKey = "PotatoDye.Cape".GetStableHashCode(), ZdoFor = "PotatoDye.CapeFor".GetStableHashCode();
@@ -35,8 +35,14 @@ namespace PotatoDye
             Log = Logger;
             ShowColors = Config.Bind("General", "Show cape colors", true, "Show dyed capes in their colors, yours and other players'.");
             BarberPanel = Config.Bind("General", "Barber panel", true, "Show the Cape color panel at the barber.");
+            Holster.Enabled = Config.Bind("General", "Holster places", true,
+                "Draw weapons, tools and shields on the back where their owners put them, yours and other players', and let you move yours: hold Holster adjust key with the arrow keys and Page Up / Page Down to move, add Right Shift to tilt, Home picks the next item, End puts it back where the game puts it. Also moves Better Archery's quiver.");
+            Holster.AdjustKey = Config.Bind("General", "Holster adjust key", KeyCode.RightControl,
+                "The key to hold while moving what's on your back.");
             new Harmony(Id).PatchAll(typeof(Plugin).Assembly);
         }
+
+        private void Update() => Holster.Update();
 
         // ---------------------------------------------------------------- colors
         // A color is kept as "RRGGBB" on the cape and as 0x1RRGGBB in the wearer's shared data (0 = not dyed).
