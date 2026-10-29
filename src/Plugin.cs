@@ -22,7 +22,7 @@ namespace PotatoDye
     [BepInPlugin(Id, "Potato Dye", Version)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string Id = "potato.dye", Version = "1.1.0";
+        public const string Id = "potato.dye", Version = "1.1.1";
         internal const string SaveKey = "PotatoDye.Capes";
         // Shared with everyone: the color, and the cape it is for (a color only tints that cape).
         internal static readonly int ZdoKey = "PotatoDye.Cape".GetStableHashCode(), ZdoFor = "PotatoDye.CapeFor".GetStableHashCode();
