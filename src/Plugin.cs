@@ -22,7 +22,7 @@ namespace PotatoDye
     [BepInPlugin(Id, "Potato Dye", Version)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string Id = "potato.dye", Version = "1.1.1";
+        public const string Id = "potato.dye", Version = "1.1.2";
         internal const string SaveKey = "PotatoDye.Capes";
         // Shared with everyone: the color, and the cape it is for (a color only tints that cape).
         internal static readonly int ZdoKey = "PotatoDye.Cape".GetStableHashCode(), ZdoFor = "PotatoDye.CapeFor".GetStableHashCode();
@@ -390,6 +390,7 @@ namespace PotatoDye
                 var copy = UnityEngine.Object.Instantiate(sliderSource.gameObject, rect, false);
                 copy.name = "PotatoDye_" + Names[i];
                 Clean(copy);
+                SwitchOn(copy);
                 var slider = copy.GetComponent<Slider>();
                 slider.onValueChanged = new Slider.SliderEvent();
                 slider.minValue = 0f;
@@ -415,6 +416,7 @@ namespace PotatoDye
             var reset = UnityEngine.Object.Instantiate(barber.m_cancel.gameObject, rect, false);
             reset.name = "PotatoDye_Reset";
             Clean(reset);
+            SwitchOn(reset);
             var button = reset.GetComponent<Button>();
             button.onClick = new Button.ButtonClickedEvent();
             button.onClick.AddListener(Reset);
@@ -477,6 +479,7 @@ namespace PotatoDye
             var copy = UnityEngine.Object.Instantiate(source.gameObject, panel.transform, false);
             copy.name = "PotatoDye_" + name;
             Clean(copy);
+            SwitchOn(copy);
             foreach (Transform child in copy.transform) UnityEngine.Object.Destroy(child.gameObject);
             var text = copy.GetComponent<TMP_Text>();
             text.text = "";
@@ -484,6 +487,17 @@ namespace PotatoDye
             text.overflowMode = TextOverflowModes.Ellipsis;
             Place((RectTransform)copy.transform, x, y, w, h);
             return text;
+        }
+
+        // A copy is switched on whatever its original is: other barber mods hide the game's controls we copy from. Balrond's
+        // Character Customization 2.0.25 switches off the hair level and tone sliders (EditBarberGuiLayout, in its
+        // ShowBarberGui postfix); when that ran before our panel was built, the copied sliders came out switched off and
+        // no colour could be picked (GitHub report, 2026-11-07).
+        private static void SwitchOn(GameObject copy)
+        {
+            if (copy.activeSelf) return;
+            copy.SetActive(true);
+            Plugin.Log.LogInfo("Cape color panel: " + copy.name + " was copied from a control another mod hid; switched on.");
         }
 
         // No translation, gamepad shortcut or layout parts carried over from the copied control.

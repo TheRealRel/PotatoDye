@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.2
+- The cape color sliders work with Balrond's Character Customization installed.
+
 ## 1.1.1
 - The page shows a short clip of moving an axe on your back. Nothing else changed.
 
