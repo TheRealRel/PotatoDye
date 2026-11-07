@@ -56,3 +56,27 @@ VALHEIM_MANAGED=".../Valheim/valheim_Data/Managed" BEPINEX=".../profiles/MyProfi
 - `tools/ArmorTest.cs` is a test-only console command (`dyetest`). Copy it into `src/` for a test build; never ship it.
 
 The code is under the MIT License; the icon is © TheRealRel under CC BY-NC 4.0. See LICENSE.
+
+<!--
+                              /
+                   __       //
+                   -\= \=\ //
+                 --=_\=---//=--
+               -_==/  \/ //\/--
+                ==/   /O   O\==--
+   _ _ _ _     /_/    \  ]  /--
+  /\ ( (- \    /       ] ] ]==-
+ (\ _\_\_\-\__/     \  (,_,)--
+(\_/                 \     \-
+\/      /       (   ( \  ] /)
+/      (         \   \_ \./ )
+(       \         \      )  \
+(       /\_ _ _ _ /---/ /\_  \
+ \     / \     / ____/ /   \  \
+  (   /   )   / /  /__ )   (  )
+  (  )   / __/ '---`       / /
+  \  /   \ \             _/ /
+  ] ]     )_\_         /__\/
+  /_\     ]___\
+ (___)
+-->
