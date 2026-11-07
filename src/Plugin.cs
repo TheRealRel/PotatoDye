@@ -230,6 +230,7 @@ namespace PotatoDye
                     Fit();
                     // Coming back from the inventory keeps the sliders where they were.
                     if (!__state || !Plugin.Previewing) Load();
+                    if (Probe.On) Probe.Report("open");
                 }
                 catch (Exception e)
                 {
@@ -331,6 +332,7 @@ namespace PotatoDye
             owner = barber;
             var root = barber.m_rootPanel.transform as RectTransform;
             var sliderSource = barber.m_hairLevel ? barber.m_hairLevel : barber.m_hairTone;
+            if (Probe.On && sliderSource) Probe.Source = Probe.Describe(sliderSource.gameObject) + " parent " + (sliderSource.transform.parent ? Probe.Describe(sliderSource.transform.parent.gameObject) : "none");
             var textSource = barber.m_selectedHair;
             if (!root || !sliderSource || !textSource || !barber.m_cancel)
             {
@@ -423,6 +425,7 @@ namespace PotatoDye
             var buttonText = reset.GetComponentInChildren<TMP_Text>(true);
             if (buttonText) buttonText.text = "No dye";
             Place((RectTransform)reset.transform, width - pad - 140f, y, 140f, 40f);
+            if (Probe.On) panel.AddComponent<Probe>();
             panel.SetActive(false);
         }
 
@@ -507,6 +510,79 @@ namespace PotatoDye
             foreach (var shortcut in copy.GetComponentsInChildren<UIGamePad>(true)) UnityEngine.Object.Destroy(shortcut);
             foreach (var layout in copy.GetComponents<LayoutElement>()) UnityEngine.Object.Destroy(layout);
             foreach (var fitter in copy.GetComponents<ContentSizeFitter>()) UnityEngine.Object.Destroy(fitter);
+        }
+
+        // TEST ONLY (1.1.2 test b): why the sliders don't show with Balrond's Character Customization. Logs only.
+        internal sealed class Probe : MonoBehaviour
+        {
+            internal const bool On = true;
+            internal static string Source = "?";
+            private float m_at;
+            private bool m_done;
+
+            private void OnEnable()
+            {
+                m_at = Time.unscaledTime + 1f;
+                m_done = false;
+            }
+
+            private void Update()
+            {
+                if (m_done || Time.unscaledTime < m_at) return;
+                m_done = true;
+                Report("1 s after open");
+            }
+
+            internal static string Describe(GameObject go) =>
+                go.name + " (self " + go.activeSelf + ", in hierarchy " + go.activeInHierarchy + ")";
+
+            internal static void Report(string when)
+            {
+                try
+                {
+                    var log = new System.Text.StringBuilder();
+                    log.Append("Probe ").Append(when).Append(": source ").Append(Source);
+                    var method = AccessTools.Method(typeof(PlayerCustomizaton), nameof(PlayerCustomizaton.ShowBarberGui));
+                    var info = Harmony.GetPatchInfo(method);
+                    if (info != null)
+                    {
+                        log.Append("; ShowBarberGui prefixes ").Append(string.Join(", ", info.Prefixes.Select(x => x.owner + "#" + x.index + " p" + x.priority)));
+                        log.Append("; postfixes ").Append(string.Join(", ", info.Postfixes.Select(x => x.owner + "#" + x.index + " p" + x.priority)));
+                    }
+                    if (panel)
+                    {
+                        var r = (RectTransform)panel.transform;
+                        log.Append("; panel ").Append(Describe(panel)).Append(" size ").Append(r.rect.size).Append(" scale ").Append(r.lossyScale).Append(" under ").Append(r.parent ? r.parent.name : "none");
+                    }
+                    Plugin.Log.LogInfo(log.ToString());
+                    for (int i = 0; i < Sliders.Length; i++)
+                    {
+                        var slider = Sliders[i];
+                        if (!slider) { Plugin.Log.LogInfo("Probe slider " + i + ": gone"); continue; }
+                        var line = new System.Text.StringBuilder();
+                        var rect = (RectTransform)slider.transform;
+                        line.Append("Probe slider ").Append(i).Append(": ").Append(Describe(slider.gameObject))
+                            .Append(" enabled ").Append(slider.enabled).Append(" interactable ").Append(slider.interactable)
+                            .Append(" size ").Append(rect.rect.size).Append(" scale ").Append(rect.lossyScale)
+                            .Append(" handle ").Append(slider.handleRect ? Describe(slider.handleRect.gameObject) : "none");
+                        foreach (var t in slider.GetComponentsInChildren<Transform>(true))
+                        {
+                            if (t == slider.transform) continue;
+                            var image = t.GetComponent<Image>();
+                            line.Append(" | ").Append(t.name).Append(" self ").Append(t.gameObject.activeSelf)
+                                .Append(" size ").Append(((RectTransform)t).rect.size);
+                            if (image) line.Append(" img ").Append(image.enabled).Append(" a ").Append(image.color.a.ToString("0.00")).Append(image.sprite ? " sprite" : " nosprite");
+                        }
+                        foreach (var group in slider.GetComponentsInParent<CanvasGroup>(true))
+                            line.Append(" | group ").Append(group.name).Append(" alpha ").Append(group.alpha);
+                        Plugin.Log.LogInfo(line.ToString());
+                    }
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogWarning("Probe failed: " + e);
+                }
+            }
         }
 
         private static void Place(RectTransform rect, float x, float y, float w, float h)
